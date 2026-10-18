@@ -97,14 +97,17 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
       await HindiFlow.initialize(baseUrl: _api.trim());
       final result =
           await HindiFlow.translate(_input.text.trim(), useCache: false);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _initialized = true;
           _translation = result;
         });
+      }
+
     } catch (e) {
-      if (mounted) setState(() => _error = _friendlyError(e));
-    } finally {
+      if (mounted) {
+        setState(() => _error = _friendlyError(e));
+      }    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -341,12 +344,21 @@ class _TranslatorScreenState extends State<TranslatorScreen> {
                           IconButton(
                               tooltip: 'Copy translation',
                               onPressed: () async {
+                                final translation = _translation!;
+
                                 await Clipboard.setData(
-                                    ClipboardData(text: _translation!));
-                                if (mounted)
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('Translation copied')));
+                                  ClipboardData(text: translation),
+                                );
+
+                                if (!context.mounted) {
+                                  return;
+                                }
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Translation copied'),
+                                  ),
+                                );
                               },
                               icon: const Icon(Icons.copy_rounded,
                                   color: _purple))
