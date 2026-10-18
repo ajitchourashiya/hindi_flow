@@ -1,114 +1,256 @@
 # HindiFlow
 
-A reusable Flutter package for English-to-Hindi translation using a configurable HTTP translation backend.
+**English-to-Hindi translation for Flutter apps.**
 
-## Important architecture note
+HindiFlow is a Flutter package that makes it easy to translate English text into Hindi using a hosted AI translation API. It provides a simple translation method, optional caching, recursive JSON translation, and a convenient `HindiText` widget.
 
-The translation model runs on your backend, not inside the Flutter package. The package sends text to `POST /translate` and expects JSON containing `translated_text`. The included demo is preconfigured to use the current HindiFlow Cloudflare Worker: `https://hindiflow-api.contact-internchoice.workers.dev`. This is a public endpoint; model usage may be billed or subject to provider limits, so review Cloudflare Workers AI pricing and usage limits before production use.
+## Features
 
-## Setup
+- 🇬🇧 Translate English text into Hindi.
+- ⚡ Simple API with no required initialization for the default endpoint.
+- 🔗 Configure a custom API endpoint when needed.
+- 💾 Cache translations in memory and with `SharedPreferences`.
+- 🧩 Translate strings inside nested JSON-like maps and lists.
+- 🎨 Display translations using the `HindiText` widget.
+- ⏱️ Configure request timeouts.
+- 🛡️ Clear error reporting through `HindiFlowException`.
 
-Add the package from your local path while developing:
+## Installation
+
+Add HindiFlow to your Flutter project:
+
+```bash
+flutter pub add hindi_flow
+```
+
+Or add it to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hindi_flow:
-    path: ../hindi_flow
+  hindi_flow: ^0.1.0
 ```
 
-Configure once before using the package:
+Then run:
+
+```bash
+flutter pub get
+```
+
+> **Note:** Use the latest version available on [pub.dev](https://pub.dev/packages/hindi_flow). If a newer version has been published, use that version instead of `0.1.0`.
+
+## Quick start
+
+Import the package:
+
+```dart
+import 'package:hindi_flow/hindi_flow.dart';
+```
+
+Translate your first sentence:
+
+```dart
+final hindi = await HindiFlow.translate(
+  'How are you my friend?',
+);
+
+print(hindi);
+// आप कैसे हैं मेरे दोस्त?
+```
+
+The default API endpoint is built into the package. You do not need to call `HindiFlow.initialize()` before translating with the default configuration.
+
+## Configure a custom API
+
+If you operate your own compatible translation API, configure it before making translation requests:
 
 ```dart
 await HindiFlow.initialize(
-  baseUrl: 'https://YOUR-STABLE-API.example.com',
+  baseUrl: 'https://your-api.example.com',
 );
 ```
 
-## Translate one sentence
+You can also configure a request timeout:
 
 ```dart
-final hindi = await HindiFlow.translate('Welcome to HindiFlow!');
-print(hindi);
+await HindiFlow.initialize(
+  baseUrl: 'https://your-api.example.com',
+  timeout: const Duration(seconds: 60),
+);
 ```
 
-## Translate API JSON
+The API base URL should not include the `/translate` path. HindiFlow appends that path automatically.
 
-Only string values are translated. Keys, numbers, booleans and null values are preserved.
+Calling `initialize()` is optional when using the built-in default endpoint.
+
+## Translate multiple strings
+
+Translate different pieces of text with the same simple method:
 
 ```dart
-final translated = await HindiFlow.translateJson({
+final greeting = await HindiFlow.translate('Good morning');
+final welcome = await HindiFlow.translate('Welcome to our app');
+final thanks = await HindiFlow.translate('Thank you');
+
+print(greeting);
+print(welcome);
+print(thanks);
+```
+
+## Translate JSON data
+
+Use `translateJson()` to recursively translate string values in maps and lists.
+
+```dart
+final data = {
   'title': 'Welcome',
-  'description': 'Find nearby services',
-  'id': 42,
-  'active': true,
-});
+  'description': 'How are you?',
+  'items': [
+    'Good morning',
+    'Thank you',
+  ],
+  'count': 3,
+};
+
+final translatedData = await HindiFlow.translateJson(data);
+
+print(translatedData);
 ```
 
-Nested maps and lists are handled recursively. For production APIs, prefer translating only user-facing fields, not identifiers, URLs, email addresses, codes or machine-readable values.
+String values are translated recursively. Map keys and non-string values remain unchanged.
 
-## Widget
+**Important:** Each string may require a separate translation request unless the result is already cached. Large JSON structures can therefore take longer to process.
+
+## Use the HindiText widget
+
+HindiFlow also provides a `HindiText` widget for displaying translated text in your Flutter UI.
 
 ```dart
 HindiText(
   'Welcome to HindiFlow!',
-  style: const TextStyle(fontSize: 20),
   placeholder: 'Translating...',
+  style: const TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  ),
 )
 ```
 
-`HindiText` translates the supplied text asynchronously. Existing Flutter `Text` widgets are not automatically intercepted; use `HindiText` or `HindiFlow.translate()` explicitly.
+The widget translates the supplied text asynchronously and displays the translated result.
 
-## Backend contract
+For the best experience, use it inside a widget tree where its available layout space is properly constrained.
 
-Request:
+## Translation caching
 
-```http
-POST /translate
-Content-Type: application/json
+HindiFlow caches translations to reduce repeated API requests.
 
-{"text":"Welcome to HindiFlow!"}
+By default, caching is enabled:
+
+```dart
+final result = await HindiFlow.translate(
+  'Good morning',
+);
 ```
 
-Response:
+To bypass the cache for a request:
+
+```dart
+final result = await HindiFlow.translate(
+  'Good morning',
+  useCache: false,
+);
+```
+
+Clear saved translation entries when needed:
+
+```dart
+await HindiFlow.clearCache();
+```
+
+This clears HindiFlow's in-memory cache and its persisted cache entries.
+
+## Error handling
+
+Translation requests can fail because of network problems, timeouts, invalid API responses, or server errors.
+
+Handle errors in your application:
+
+```dart
+try {
+  final result = await HindiFlow.translate(
+    'How are you?',
+  );
+
+  print(result);
+} on HindiFlowException catch (e) {
+  print('HindiFlow error: ${e.message}');
+} catch (e) {
+  print('Unexpected error: $e');
+}
+```
+
+Always provide appropriate loading and error states in production applications.
+
+## API requirements
+
+HindiFlow expects a compatible translation API that accepts a JSON request at `POST /translate`.
+
+Example request:
 
 ```json
 {
-  "original_text": "Welcome to HindiFlow!",
-  "translated_text": "हिंदीफ्लो में आपका स्वागत है!",
+  "text": "How are you my friend?",
+  "source_language": "eng_Latn",
+  "target_language": "hin_Deva"
+}
+```
+
+The API should return JSON containing a non-empty `translated_text` field.
+
+Example response:
+
+```json
+{
+  "original_text": "How are you my friend?",
+  "translated_text": "आप कैसे हैं मेरे दोस्त?",
   "source_language": "en",
   "target_language": "hi"
 }
 ```
 
-## Cache
+The default hosted API is configured in the package. Custom APIs must implement a compatible request and response format.
 
-Translations are cached in memory and in SharedPreferences. Call `HindiFlow.clearCache()` when needed. The cache key includes source language, target language and text.
+## Dependencies
 
-## Run example
+HindiFlow uses:
 
-From the package root, generate platform scaffolding once, then run:
+- `http` for HTTP requests.
+- `shared_preferences` for persistent translation caching.
 
-```bash
-cd example
-flutter create --platforms=android,web,windows .
-flutter pub get
-flutter run
-```
+These dependencies are managed by Flutter's package system.
 
-Start an emulator or connect a device first. The example defaults to `https://hindiflow-api.contact-internchoice.workers.dev`. You can change it from the API settings panel in the demo UI.
+## Requirements
 
-## Before publishing to pub.dev
+- Flutter
+- Dart SDK compatible with the package's `pubspec.yaml`
+- Internet access to reach the configured translation API
 
-1. Replace `YOUR_USERNAME` links in `pubspec.yaml`.
-2. Deploy a stable HTTPS backend and configure its URL.
-3. Add backend authentication/rate limiting; never ship Hugging Face or ngrok tokens in the app.
-4. Run `flutter analyze` and `flutter test`.
-5. Review privacy, caching and translation accuracy for your use case.
-6. Run `dart pub publish --dry-run`, then `dart pub publish`.
+## Important notes
 
-This is a starter implementation. It does not make a Colab URL permanent and should not be published as production-ready until the backend is secured and deployed.
+- The default API is a hosted service and may have usage limits, availability constraints, or operating costs.
+- Translation results depend on the underlying AI model and may not always be perfect.
+- Do not send sensitive or confidential text unless your API and data-handling arrangements are appropriate for that information.
+- For public or commercial deployments, use appropriate server-side rate limiting, monitoring, and access controls.
+- The package's default endpoint is public-facing; embedding its URL in a Flutter app does not provide authentication or protect the endpoint from abuse.
 
+## Example application
 
-## Widget initialization order
+Explore the `example/` directory in this repository to see HindiFlow working in a Flutter application, including text input, sample phrases, translation output, and copy-to-clipboard functionality.
 
-Call `HindiFlow.initialize(...)` before displaying `HindiText`. The example app displays an instruction until initialization completes, then mounts the widget so translation starts with the configured API URL.
+## Contributing
+
+Contributions, bug reports, and suggestions are welcome. Please include reproducible steps when reporting a bug.
+
+## License
+
+See the `LICENSE` file in this repository for the applicable license terms.
+  

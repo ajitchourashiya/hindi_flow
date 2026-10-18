@@ -1,0 +1,19 @@
+name: hindi_flow
+description: A Flutter package for English-to-Hindi translation through a configurable translation API.
+version: 0.1.1
+homepage: https://pub.dev
+repository: https://github.com/YOUR_USERNAME/hindi_flow
+issue_tracker: https://github.com/YOUR_USERNAME/hindi_flow/issues
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+flutter:
